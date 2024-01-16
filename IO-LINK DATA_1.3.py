@@ -236,7 +236,10 @@ def RFID_write():
     global client
     lable_read_data.delete(1.0, tk.END)# 清空文本框内容
     register_address = PDI_modbus_address
-    write_command = [0x0200,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000]
+    if master_type.get() ==1:
+        write_command = [0x0002,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    else:
+        write_command = [0x0200,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     word=[]
     data_write = lable_write_data.get(1.0, tk.END)
     if data_write == "\n":
@@ -244,15 +247,20 @@ def RFID_write():
         return
     else:
         for i in range(0, len(data_write)-2, 4):  
-            hex_part1 = data_write[i:i+2]  
-            hex_part2 = data_write[i+2:i+4]
-            word.append(int(hex_part1, 16) * 256 + int(hex_part2, 16))
+            if master_type.get() == 1:
+                hex_part1 = data_write[i:i+2]  
+                hex_part2 = data_write[i+2:i+4]
+                word.append(int(hex_part1, 16) * 256 + int(hex_part2, 16))
+            else:  
+                hex_part1 = data_write[i:i+2]  
+                hex_part2 = data_write[i+2:i+4]
+                word.append(int(hex_part1, 16) * 256 + int(hex_part2, 16))
         write_command[2:2+len(word)] = word  
         result_write = client.write_registers(address=PDO_modbus_address, values=write_command[:], slave=1)  # 
+        print(result_write)
         if result_write.isError():  
             print(result_write)  
             client.close()
-            #break
         else:
             lable_read_data.insert(tk.END, "Write start"+"\n")
 
@@ -266,7 +274,10 @@ def RFID_read():
     def display_array(array):  
         for item in array:  
             lable_read_data.insert(tk.END, str(item) + " ")  # 插入数组元素并换行 
-    read_command = [0x0100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    if master_type.get() ==1:
+        read_command = [0x0001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    else:
+        read_command = [0x0100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     result1 = client.write_registers(address=PDO_modbus_address, values=read_command[:], slave=1)
     print(result1)
 
@@ -281,12 +292,20 @@ def RFID_read():
             print("读取错误")  
             client.close()
             #break  
-        if hex_list[4]=='05':   
+        if master_type.get() ==1:
+            status_index = 1
+            length_index = 0
+            data_index = 4
+        else:
+            status_index = 4
+            length_index = 5
+            data_index = 8
+        if hex_list[status_index]=='05':   
             lable_read_data.insert(tk.END, "Read success"+"\n")
-            length = int(hex_list[5],16)
+            length = int(hex_list[length_index],16)
             lable_read_data.insert(tk.END, "The length of data is:" + str(length)+"\n")
             lable_read_data.insert(tk.END, "The data is:"+"\n")
-            display_array(hex_list[8:length+8])
+            display_array(hex_list[data_index:length+data_index])
         else:
             lable_read_data.insert(tk.END, "Read failed"+"\n")
 
@@ -299,8 +318,8 @@ def on_connect():
 
     ICE23_PDI_modbus_address = [0x3e8,0x7d0,0xbb8,0xfa0,0x1388,0x1770,0x1b58,0x1f40]
     ICE23_PDO_modbus_address = [0x41A,0x802,0xbea,0xfd2,0x13ba,0x17a2,0x1b8a,0x1f72]
-    ICE11_PDI_modbus_address = [0x101,0x111,0x121,0x131,0x141,0x151,0x161,0x171]
-    ICE11_PDO_modbus_address = [0x1,0x11,0x21,0x31,0x41,0x51,0x61,0x71]
+    ICE11_PDI_modbus_address = [0x100,0x110,0x120,0x130,0x140,0x150,0x160,0x170]
+    ICE11_PDO_modbus_address = [0x0,0x10,0x20,0x30,0x40,0x50,0x60,0x70]
 
     if master_type.get() == 1:
         PDI_address_value = ICE11_PDI_modbus_address
